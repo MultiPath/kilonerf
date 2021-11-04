@@ -443,6 +443,7 @@ def render_rays(ray_batch,
     else:
         return ret, mean_regularization_term
     
+
 def pretrain_constant(multi_network, position_fourier_embedding, direction_fourier_embedding, cfg):
     assert not has_flag(cfg, 'use_global_coordinates')
     batch_size = cfg['constant_pretraining']['batch_size']
@@ -469,6 +470,7 @@ def pretrain_constant(multi_network, position_fourier_embedding, direction_fouri
     raw = multi_network(embedded_points_and_dirs, batch_size_per_network)
     target = torch.tensor(cfg['constant_pretraining']['target'], device=device)
     return F.mse_loss(raw, target.unsqueeze(0).expand(batch_size, 4))
+
 
 def train(cfg, log_path, render_cfg_path):
     Logger.write('Using GPU: {}'.format(torch.cuda.get_device_name(0)))
@@ -825,6 +827,43 @@ def train(cfg, log_path, render_cfg_path):
     if use_fused_network_eval_kernel:
         multi_network.serialize_params()
     
+    if has_flag(cfg, 'render_demo'):
+        import gradio as gr
+        
+        orbit_camera_cfg = render_kwargs_test['cfg']['orbit_camera']
+        center = np.asarray(orbit_camera_cfg['center'])
+        orbit_camera = OrbitCamera(center, orbit_camera_cfg['radius'], orbit_camera_cfg['inclination'], orbit_camera_cfg['azimuth'], device)
+        fast_kilonerf_renderer = create_fast_kilonerf_renderer(orbit_camera.c2w, intrinsics, render_kwargs_test)
+        # from fairseq import pdb;pdb.set_trace()
+
+        def run(radius, azimuth, inclilnation):
+            orbit_camera.radius = radius
+            orbit_camera.azimuth = azimuth * np.pi
+            orbit_camera.inclination = inclilnation * np.pi
+            orbit_camera.compute_c2w()
+            fast_kilonerf_renderer.set_camera_pose(orbit_camera.c2w)
+            rgb, elapsed_time = fast_kilonerf_renderer.render()
+            return rgb.cpu().clamp(min=-1, max=1).numpy()
+            # render_poses = np.array(poses[i_render]) 
+            # render_poses = torch.Tensor(render_poses).to(device)
+            # rgbs, _ = render_path(render_poses, intrinsics, cfg['chunk_size'], render_kwargs_test, gt_imgs=images,
+            #         savedir='/tmp', render_factor=cfg['render_factor'])
+            # imageio.mimwrite(os.path.join('/tmp', 'video.mp4'), to8b(rgbs), fps=30, quality=8)
+            # return os.path.join('/tmp', 'video.mp4')
+
+        css  = ".output_image {height: 60rem !important; width: 100% !important;}"
+        radius = gr.inputs.Slider(minimum=2, maximum=6, default=orbit_camera_cfg['radius'], label="radius (%)")
+        azimuth = gr.inputs.Slider(minimum=0, maximum=2, default=round(orbit_camera_cfg['azimuth']/np.pi,2), label="azimuth")
+        inclination = gr.inputs.Slider(minimum=0, maximum=1, default=round(orbit_camera_cfg['inclination']/np.pi,2), label="inclination")
+        gr.Interface(fn=run,
+             inputs=[radius, azimuth, inclination],
+             outputs="image",
+             layout='unaligned',
+             css=css,
+             live=True,
+             server_port=3211).launch()
+        return
+
     if has_flag(cfg, 'render_to_screen'):
         render_to_screen(intrinsics, render_kwargs_test)
         return
