@@ -548,6 +548,7 @@ def train(cfg, log_path, render_cfg_path):
 
         near = 2.
         far = 6.
+    
     elif cfg['dataset_type'] == 'nsvf':
         test_traj_path = cfg['test_traj_path'] if 'test_traj_path' in cfg else None
         images, poses, intrinsics, near, far, background_color, render_poses, i_split = load_nsvf_dataset(cfg['dataset_dir'],  cfg['testskip'], test_traj_path)
@@ -940,11 +941,12 @@ def train(cfg, log_path, render_cfg_path):
         torch.cuda.set_rng_state(cp['torch_cuda_rng_state'])
         np.random.set_state(cp['numpy_rng_state'])
     
+    # from fairseq import pdb;pdb.set_trace()
     start = start + 1
     for i in trange(start, N_iters):
         model.train()
         time0 = time.time()
-        
+       
         # Sample random ray batch
         if use_batching:
             # Random over all images

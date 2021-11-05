@@ -3,8 +3,8 @@ from torch.utils.cpp_extension import BuildExtension, CUDAExtension
 import os
 
 use_local_cub = True
-
-include_dirs = ['/usr/local/magma/include']
+magma_path = "/private/home/jgu/tools/magma"
+include_dirs = [f'{magma_path}/include']
 if use_local_cub:
     dir_path = os.path.dirname(os.path.realpath(__file__))
     cub_path = os.path.join(dir_path, 'cub-1.8.0')
@@ -16,7 +16,7 @@ extension = CUDAExtension('kilonerf_cuda',
      'render_to_screen.cpp'],
     include_dirs = include_dirs,
     libraries = ['GL', 'GLU', 'glut'],
-    extra_objects = ['/usr/local/magma/lib/libmagma.a'],
+    extra_objects = [f'{magma_path}/lib/libmagma.a'],
     extra_compile_args = {'cxx': [], 'nvcc': ['-Xptxas', '-v,-warn-lmem-usage']}
     )
 

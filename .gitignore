@@ -1,5 +1,6 @@
 __pycache__/
 logs/
 vis/
-/data
+data/
+backup/
 *.so
